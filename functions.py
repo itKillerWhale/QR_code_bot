@@ -25,3 +25,18 @@ def get_settings(message: types.Message) -> dict:
                      "qzone": results[6]}
 
     return settings_dict
+
+
+def update_settings(message: types.Message, settins_name: str, value) -> None:
+    with sqlite3.connect('db/data.db') as con:
+        cursor = con.cursor()
+        try:
+            value = int(value)
+            cursor.execute(f"""UPDATE settings
+                                SET {settins_name} = {value}
+                                WHERE user_id = {message.from_user.id}""")
+        except ValueError:
+            cursor.execute(f"""UPDATE settings
+                                            SET {settins_name} = '{value}'
+                                            WHERE user_id = {message.from_user.id}""")
+        con.commit()
