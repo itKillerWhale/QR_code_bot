@@ -1,4 +1,6 @@
 from config import BOT_TOCEN
+from functions import *
+
 import requests
 
 from aiogram import Bot, Dispatcher, executor, types
@@ -28,6 +30,7 @@ async def start(message: types.Message) -> None:
     await message.answer(
         text="Привет. Я бот для создания qr-кодов. Вот что я умею:\n/qr_code - создание qr-кода\n/settings - настройки",
         reply_markup=get_markup_for_start())
+    create_settings(message)
 
 
 @dp.message_handler(commands=["qr_code"])
@@ -38,7 +41,12 @@ async def start_generate_qr_code(message: types.Message) -> None:
 
 @dp.message_handler(state=CreateQRCode.get_text)
 async def get_text_for_qr_code(message: types.Message, state: FSMContext) -> None:
-    url = f'http://api.qrserver.com/v1/create-qr-code/?data={message.text}'
+    settings_dict = get_settings(message)
+    settings_list = list(zip(settings_dict.keys(), settings_dict.values()))
+    del settings_list[0]
+    settings_list.append(("data", message.text))
+
+    url = f'http://api.qrserver.com/v1/create-qr-code/?{"&".join(list(map(lambda x: f"{x[0]}={x[1]}", settings_list)))}'
     await bot.send_photo(chat_id=message.chat.id, photo=url, reply_markup=get_markup_for_start())
     await state.finish()
 
