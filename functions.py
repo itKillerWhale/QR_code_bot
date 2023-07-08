@@ -12,10 +12,10 @@ def create_settings(message: types.Message) -> None:
             f"""INSERT INTO settings VALUES({message.from_user.id}, {200}, 'L', '0-0-0', '255-255-255', 0, 10)""").fetchall()
 
 
-def get_settings(message: types.Message) -> dict:
+def get_settings(user_id: int) -> dict:
     with sqlite3.connect('db/data.db') as con:
         cursor = con.cursor()
-        results = cursor.execute(f"""SELECT * FROM settings WHERE user_id = {message.from_user.id}""").fetchall()[0]
+        results = cursor.execute(f"""SELECT * FROM settings WHERE user_id = {user_id}""").fetchall()[0]
         print(results)
 
     print(results[3])
@@ -27,25 +27,26 @@ def get_settings(message: types.Message) -> dict:
                      "margin": results[5],
                      "qzone": results[6]}
 
+    print(settings_dict)
     return settings_dict
 
 
 def update_settings(user_id: int, settins_name: str, value) -> None:
     with sqlite3.connect('db/data.db') as con:
-        print("start")
+        # print("start")
         cursor = con.cursor()
         try:
-            print("try")
+            # print("try")
             value = int(value)
 
         except ValueError:
-            print("Except")
+            # print("Except")
             cursor.execute(f"""UPDATE settings
                                SET {settins_name} = '{value}'
                                WHERE user_id = {user_id}""")
 
         else:
-            print("else")
+            # print("else")
             cursor.execute(f"""UPDATE settings
                                SET {settins_name} = {value}
                                WHERE user_id = {user_id}""")

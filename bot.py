@@ -1,3 +1,5 @@
+import hashlib
+
 from config import BOT_TOCEN
 from functions import *
 
@@ -7,8 +9,9 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.types import InlineQueryResultArticle, InputTextMessageContent
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardMarkup, \
-    InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent
+    InlineKeyboardButton, InlineQueryResultArticle, InputTextMessageContent, InlineQueryResultPhoto
 
 storage = MemoryStorage()
 bot = Bot(BOT_TOCEN)
@@ -60,10 +63,10 @@ def get_keyboard_for_color() -> InlineKeyboardMarkup:
                                                  InlineKeyboardButton(text="Белый", callback_data="255-255-255")],
 
                                                 [InlineKeyboardButton(text="Крассный", callback_data="255-0-0"),
-                                                 InlineKeyboardButton(text="Бардовый", callback_data="139-0-0)")],
+                                                 InlineKeyboardButton(text="Бардовый", callback_data="139-0-0")],
 
                                                 [InlineKeyboardButton(text="Зелёный", callback_data="0-128-0"),
-                                                 InlineKeyboardButton(text="Лаймовый", callback_data="0-255-0)")],
+                                                 InlineKeyboardButton(text="Лаймовый", callback_data="0-255-0")],
 
                                                 [InlineKeyboardButton(text="Жёлтый", callback_data="255-255-0"),
                                                  InlineKeyboardButton(text="Золотой", callback_data="255-215-0")],
@@ -98,12 +101,14 @@ async def start_generate_qr_code(message: types.Message) -> None:
 
 @dp.message_handler(state=CreateQRCode.get_text)
 async def get_text_for_qr_code(message: types.Message, state: FSMContext) -> None:
-    settings_dict = get_settings(message)
+    settings_dict = get_settings(message.from_user.id)
+    print(settings_dict)
     settings_list = list(zip(settings_dict.keys(), settings_dict.values()))
     del settings_list[0]
     settings_list.append(("data", message.text))
 
     url = f'http://api.qrserver.com/v1/create-qr-code/?{"&".join(list(map(lambda x: f"{x[0]}={x[1]}", settings_list)))}'
+    print(url)
     await bot.send_photo(chat_id=message.chat.id, photo=url, reply_markup=get_keyboard_for_start())
     await state.finish()
 
@@ -187,6 +192,10 @@ async def settings_menu_callback_query(callback: types.CallbackQuery, state: FSM
         await callback.message.delete()
         await state.finish()
 
+@dp.message_handler(state=Settings.menu)
+async def del_message(message: types.Message):
+    await message.delete()
+
 
 @dp.message_handler(lambda message: message.text.isalnum(), state=Settings.size)
 async def get_size(message: types.Message, state: FSMContext):
@@ -216,6 +225,32 @@ async def get_ecc(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(state=Settings.bgcolor)
 async def get_ecc(callback: types.CallbackQuery, state: FSMContext):
     await get_callback(callback, state, "bgcolor")
+
+
+@dp.inline_handler()
+async def iline_qr_code(inline_query: types.InlineQuery):
+    text = inline_query.query or "IT_Fish"
+
+    settings_dict = get_settings(inline_query.from_user.id)
+    settings_list = list(zip(settings_dict.keys(), settings_dict.values()))
+    del settings_list[0]
+    settings_list.append(("data", text.replace(" ", "%20")))
+    print(settings_list)
+
+    url = f'http://api.qrserver.com/v1/create-qr-code/?{"&".join(list(map(lambda x: f"{x[0]}={x[1]}", settings_list)))}'
+    print(url)
+
+    result_id = hashlib.md5(url.encode()).hexdigest()
+
+    item = InlineQueryResultPhoto(
+        id=result_id,
+        photo_url=url,
+        thumb_url=url,
+        photo_width=32,
+        photo_height=32,
+        )
+
+    await bot.answer_inline_query(inline_query_id=inline_query.id, results=[item], cache_time=1)
 
 
 if __name__ == "__main__":
